@@ -1,0 +1,95 @@
+<!-- Front end generation largely helped by ChatGPT -->
+{% extends "layout.html" %}
+
+{% block title %}Idle Stock Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Idle Stock Dashboard</h1>
+  <a href="{{ url_for('main.products') }}" class="btn btn-outline-secondary">Back to Products</a>
+</div>
+
+<p class="text-muted">
+  Products with stock on hand that have not moved for at least <strong>{{ idle_days }}</strong> days.
+</p>
+
+{% if rows %}
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th class="text-end">Current Stock</th>
+        <th>Last Movement</th>
+        <th class="text-end">Days Idle</th>
+        <th>Status</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for row in rows %}
+      {% set p = row.product %}
+
+      <tr class="
+        {% if row.days_idle >= (idle_days * 2) %}
+          table-danger
+        {% else %}
+          table-warning
+        {% endif %}
+      ">
+        <td>{{ p.product_code }}</td>
+        <td>{{ p.name }}</td>
+
+        <td class="text-end">{{ row.current_stock | round(2) }}</td>
+
+        <td>
+          {{ row.last_move.strftime('%Y-%m-%d') if row.last_move else 'No movement recorded' }}
+        </td>
+
+        <td class="text-end">{{ row.days_idle }}</td>
+
+        <td>
+          {% if row.days_idle >= (idle_days * 2) %}
+            <span class="badge bg-danger">Critical</span>
+          {% else %}
+            <span class="badge bg-warning text-dark">Idle</span>
+          {% endif %}
+
+          {% if row.email_sent %}
+            <span class="badge bg-secondary ms-1">Email sent</span>
+          {% endif %}
+        </td>
+
+        <td class="text-end">
+          <div class="btn-group btn-group-sm" role="group">
+            <a class="btn btn-outline-primary"
+               href="{{ url_for('main.product_edit', pid=p.id) }}">
+              Review
+            </a>
+
+            <!-- Reset button (useful for testing or re-alerting) -->
+            <form method="post"
+                  action="{{ url_for('main.reset_idle_notification', pid=p.id) }}"
+                  class="d-inline">
+              {{ csrf_token() if csrf_token is defined }}
+              <button type="submit"
+                      class="btn btn-outline-warning"
+                      onclick="return confirm('Reset idle email flag for {{ p.name }}?');">
+                Resend Email
+              </button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-success mt-3" role="alert">
+  No idle stock detected.
+</div>
+{% endif %}
+{% endblock %}

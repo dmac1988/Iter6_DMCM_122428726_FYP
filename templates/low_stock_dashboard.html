@@ -1,0 +1,90 @@
+<!-- Front end generation largely helped by ChatGPT -->
+{% extends "layout.html" %}
+
+{% block title %}Low Stock Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Low Stock Dashboard</h1>
+  <a href="{{ url_for('main.products') }}" class="btn btn-outline-secondary">Back to Products</a>
+</div>
+
+<p class="text-muted">
+  Showing items that are at or near their reorder point (ROP).<br>
+</p>
+
+{% if rows %}
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th class="text-end">Current Stock</th>
+        <th class="text-end">ROP</th>
+        <th class="text-end">Threshold</th>
+        <th class="text-end">Max Stock</th>
+        <th class="text-end">Suggested Order</th>
+        <th>Status</th>
+        <th class="text-end">Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for row in rows %}
+      {% set p = row.product %}
+      {% set current = row.current %}
+      {% set rop = row.rop %}
+      {% set threshold = row.threshold %}
+      {% set below_rop = row.below_rop %}
+      {% set max_stock = row.max_stock %}
+      {% set suggested_order = row.suggested_order %}
+
+      <tr class="
+          {% if below_rop %}
+            table-danger
+          {% elif current <= threshold %}
+            table-warning
+          {% endif %}
+      ">
+        <td>{{ p.product_code }}</td>
+        <td>{{ p.name }}</td>
+        <td class="text-muted small">{{ p.description }}</td>
+
+        <td class="text-end">{{ current | round(2) }}</td>
+        <td class="text-end">{{ rop | round(2) }}</td>
+        <td class="text-end">{{ threshold | round(2) }}</td>
+
+        <td class="text-end">{{ max_stock | round(2) }}</td>
+        <td class="text-end">{{ suggested_order | round(2) }}</td>
+
+        <td>
+          {% if below_rop %}
+            <span class="badge bg-danger">Below ROP</span>
+          {% elif current <= threshold %}
+            <span class="badge bg-warning text-dark">Near ROP</span>
+          {% else %}
+            <span class="badge bg-secondary">Healthy</span>
+          {% endif %}
+        </td>
+
+        <td class="text-end">
+          <a class="btn btn-sm btn-outline-primary"
+             href="{{ url_for('main.product_edit', pid=p.id) }}">
+            Edit
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+
+  </table>
+</div>
+
+{% else %}
+<div class="alert alert-success mt-3" role="alert">
+  No products below threshold
+</div>
+{% endif %}
+{% endblock %}

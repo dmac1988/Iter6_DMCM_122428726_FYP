@@ -1,0 +1,91 @@
+<!-- Front end generation helped by ChatGPT -->
+{% extends "layout.html" %}
+{% block title %}Products{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Products</h1>
+  <a href="{{ url_for('main.product_new') }}" class="btn btn-primary">New Product</a>
+</div>
+
+<form method="get" action="{{ url_for('main.products') }}" class="row gy-2 gx-2 align-items-center mb-3">
+  <div class="col-sm-8 col-md-6">
+    <input type="search"
+           class="form-control"
+           name="q"
+           placeholder="Search by code or name…"
+           value="{{ q or '' }}">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary" type="submit">Search</button>
+  </div>
+  {% if q %}
+  <div class="col-auto">
+    <a href="{{ url_for('main.products') }}" class="btn btn-link">Clear</a>
+  </div>
+  {% endif %}
+</form>
+
+<div class="table-responsive">
+  <table class="table table-sm table-hover align-middle">
+    <thead class="table-light">
+      <tr>
+        <th scope="col">Code</th>
+        <th scope="col">Name</th>
+        <th scope="col" style="min-width: 260px;">Description</th>
+        <th scope="col" class="text-end">Stock</th>
+        <th scope="col" class="text-end">Demand/Day</th>
+        <th scope="col" class="text-end">Lead Days</th>
+        <th scope="col" class="text-end">ROP</th>
+        <th scope="col" class="text-end">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in items %}
+      {% set below_rop = (p.current_stock is not none) and (p.current_stock < p.compute_rop()) %}
+
+      <tr class="{% if below_rop %}table-danger{% endif %}">
+        <td>{{ p.product_code }}</td>
+        <td>{{ p.name }}</td>
+        <td class="text-muted small">{{ p.description }}</td>
+        <td class="text-end">{{ p.current_stock }}</td>
+        <td class="text-end">{{ p.demand_per_day }}</td>
+        <td class="text-end">{{ p.lead_days }}</td>
+
+        <td class="text-end">
+  {{ p.compute_rop() }}
+
+  {% if p.current_stock < p.compute_rop() %}
+    <span class="badge bg-danger ms-1">Low</span>
+
+  {% elif p.current_stock <= p.compute_rop() * 1.125 %}
+    <span class="badge bg-warning text-dark ms-1">Near</span>
+
+  {% else %}
+    <span class="badge bg-success ms-1">✓</span>
+  {% endif %}
+</td>
+
+
+        <td class="text-end">
+          <div class="btn-group btn-group-sm" role="group">
+            <a class="btn btn-outline-secondary" href="{{ url_for('main.product_edit', pid=p.id) }}">Edit</a>
+            <form method="post"
+                  action="{{ url_for('main.product_delete', pid=p.id) }}"
+                  class="d-inline"
+                  onsubmit="return confirm('Delete {{ p.name }}? This cannot be undone.');">
+              {{ csrf_token() if csrf_token is defined }}
+              <button type="submit" class="btn btn-outline-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center text-muted py-4">No products found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
