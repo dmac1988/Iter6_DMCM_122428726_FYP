@@ -4,8 +4,7 @@ from datetime import datetime
 from sqlalchemy import func
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db
-from models import Product, StockMovement, Supplier
-from models import Product, StockMovement, Supplier, PurchaseOrder
+from models import Product, StockMovement, Supplier, PurchaseOrder, PendingReorder
 from email_service import send_email
 # routes blueprint
 bp = Blueprint("main", __name__)
@@ -141,41 +140,13 @@ def product_issue_stock(pid):
     m = StockMovement(product_id=pid, movement_type="ISSUE", qty_change=-qty, location=location)
     db.session.add(m)
     db.session.commit()
-    # automatic email if trigger is set off
+    # queue a pending reorder - consolidated PO will be sent at 3 PM
     if crossed_below_trigger and p.supplier and p.supplier.email and not p.notified_supplier_rop:
-        try:
-            po_record = PurchaseOrder(po_number="PENDING", product_id=p.id)
-            db.session.add(po_record)
-            db.session.flush()
-            po_number = f"PO{70000000 + po_record.id}"
-            po_record.po_number = po_number
-
-            if p.is_kanban():
-                f"Kanban Replenishment – {p.name}"
-                subject = f"Kanban Replenishment – {p.name} [{po_number}]"
-                trigger_label = "Kanban trigger level"
-            else:
-                f"Reorder Request – {p.name} (Below ROP)"
-                subject = f"Reorder Request – {p.name} (Below ROP) [{po_number}]"
-                trigger_label = "ROP"
-
-            body = (
-                f"Hello {p.supplier.contact_name},\n\n"
-                f"Purchase Order Number: {po_number}\n\n"
-                f"{p.name} (Code: {p.product_code}) requires replacement.\n\n"
-                f"Current stock: {p.current_stock:.2f}\n"
-                f"{trigger_label}: {trigger_level:.2f}\n"
-                f"Max Order: {p.max_stock}.\n\n"
-                f"Please confirm receipt of this email and availability.\n\n"
-                f"Regards,\nInventory System"
-            )
-            send_email(to_email=p.supplier.email, subject=subject, body=body)
-            p.notified_supplier_rop = True
-            db.session.commit()
-            flash(f"Supplier email sent for {p.name}.", "info")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Stock issued, but supplier email failed: {e}", "warning")
+        pending = PendingReorder(product_id=p.id)
+        db.session.add(pending)
+        p.notified_supplier_rop = True
+        db.session.commit()
+        flash(f"{p.name} queued for today's consolidated reorder (PO sent at 3 PM).", "info")
     flash("Stock issued and updated.", "success")
     return redirect(url_for("main.product_edit", pid=pid))
 # low stock route
@@ -259,3 +230,14 @@ def reset_idle_notification(pid):
     db.session.commit()
     flash("Idle notification reset.", "warning")
     return redirect(url_for("main.idle_stock_dashboard"))
+
+
+# manual trigger for testing - runs the 3 PM consolidation immediately
+@bp.route("/run-consolidation", methods=["POST"])
+def run_consolidation():
+    from scheduler import consolidate_pending_reorders
+    from flask import current_app
+    results = consolidate_pending_reorders(current_app._get_current_object())
+    for msg, category in results:
+        flash(msg, category)
+    return redirect(url_for("main.products"))

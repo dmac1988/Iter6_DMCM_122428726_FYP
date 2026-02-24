@@ -57,16 +57,43 @@ class Product(db.Model):
         qty = max_level - current
         return round(qty if qty > 0 else 0.0, 2)
 
-# sequential PO number tracking - Claude
+# Consolidated PO per supplier - generated at 3 PM daily
 class PurchaseOrder(db.Model):
     __tablename__ = "purchase_order"
 
     id = db.Column(db.BigInteger, primary_key=True)
     po_number = db.Column(db.String(20), unique=True, nullable=False)
-    product_id = db.Column(db.BigInteger, db.ForeignKey("product.id"), nullable=False)
+    supplier_id = db.Column(db.BigInteger, db.ForeignKey("supplier.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
-    product = db.relationship("Product", backref=db.backref("purchase_orders", lazy=True))
+    supplier = db.relationship("Supplier", backref=db.backref("purchase_orders", lazy=True))
+    items = db.relationship("PurchaseOrderItem", backref="po", lazy=True)
+
+
+# Line items within a consolidated PO
+class PurchaseOrderItem(db.Model):
+    __tablename__ = "purchase_order_item"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    po_id = db.Column(db.BigInteger, db.ForeignKey("purchase_order.id"), nullable=False)
+    product_id = db.Column(db.BigInteger, db.ForeignKey("product.id"), nullable=False)
+    current_stock = db.Column(db.Float, nullable=False)
+    trigger_level = db.Column(db.Float, nullable=False)
+    suggested_qty = db.Column(db.Float, nullable=False)
+
+    product = db.relationship("Product", backref=db.backref("po_items", lazy=True))
+
+
+# Tracks products that crossed below their trigger level and are awaiting the daily 3 PM PO run
+class PendingReorder(db.Model):
+    __tablename__ = "pending_reorder"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    product_id = db.Column(db.BigInteger, db.ForeignKey("product.id"), nullable=False)
+    triggered_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    processed = db.Column(db.Boolean, default=False, nullable=False)
+
+    product = db.relationship("Product", backref=db.backref("pending_reorders", lazy=True))
 
 
 # imperative for idle db

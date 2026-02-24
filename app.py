@@ -1,6 +1,7 @@
 # ChatGPT used for troubleshooting, suggestions and generating
 from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from apscheduler.schedulers.background import BackgroundScheduler
 import os
 from dotenv import load_dotenv
 
@@ -27,6 +28,18 @@ def create_app():
     # create tables if they don't exist
     with app.app_context():
         db.create_all()
+
+    # 3 PM daily consolidation job - only start once (not in Flask reloader child process)
+    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        from scheduler import consolidate_pending_reorders
+        scheduler = BackgroundScheduler(daemon=True)
+        scheduler.add_job(
+            func=lambda: consolidate_pending_reorders(app),
+            trigger="cron",
+            hour=15,
+            minute=0,
+        )
+        scheduler.start()
 
 # directs you to index page
     @app.route("/")
