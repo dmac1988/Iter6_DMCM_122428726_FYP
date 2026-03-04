@@ -5,7 +5,6 @@ from sqlalchemy import func
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db
 from models import Product, StockMovement, Supplier
-from models import Product, StockMovement, Supplier, PurchaseOrder
 from email_service import send_email
 # routes blueprint
 bp = Blueprint("main", __name__)
@@ -126,12 +125,9 @@ def product_issue_stock(pid):
     if qty > (p.current_stock or 0.0):
         flash("Not enough stock to issue.", "danger")
         return redirect(url_for("main.product_edit", pid=pid))
-    before_stock = float(p.current_stock or 0.0)
-    after_stock = before_stock - qty
-    # Kanban/ROP - hybrid trigger
+    p.current_stock = float(p.current_stock or 0.0) - qty
+    # Kanban/ROP - hybrid trigger warning
     trigger_level = p.reorder_trigger_level()
-    crossed_below_trigger = (before_stock >= trigger_level) and (after_stock < trigger_level)
-    p.current_stock = after_stock
     if p.current_stock < trigger_level:
         label = "Kanban trigger" if p.is_kanban() else "ROP"
         flash(
@@ -141,41 +137,8 @@ def product_issue_stock(pid):
     m = StockMovement(product_id=pid, movement_type="ISSUE", qty_change=-qty, location=location)
     db.session.add(m)
     db.session.commit()
-    # automatic email if trigger is set off
-    if crossed_below_trigger and p.supplier and p.supplier.email and not p.notified_supplier_rop:
-        try:
-            po_record = PurchaseOrder(po_number="PENDING", product_id=p.id)
-            db.session.add(po_record)
-            db.session.flush()
-            po_number = f"PO{70000000 + po_record.id}"
-            po_record.po_number = po_number
-
-            if p.is_kanban():
-                f"Kanban Replenishment – {p.name}"
-                subject = f"Kanban Replenishment – {p.name} [{po_number}]"
-                trigger_label = "Kanban trigger level"
-            else:
-                f"Reorder Request – {p.name} (Below ROP)"
-                subject = f"Reorder Request – {p.name} (Below ROP) [{po_number}]"
-                trigger_label = "ROP"
-
-            body = (
-                f"Hello {p.supplier.contact_name},\n\n"
-                f"Purchase Order Number: {po_number}\n\n"
-                f"{p.name} (Code: {p.product_code}) requires replacement.\n\n"
-                f"Current stock: {p.current_stock:.2f}\n"
-                f"{trigger_label}: {trigger_level:.2f}\n"
-                f"Max Order: {p.max_stock}.\n\n"
-                f"Please confirm receipt of this email and availability.\n\n"
-                f"Regards,\nInventory System"
-            )
-            send_email(to_email=p.supplier.email, subject=subject, body=body)
-            p.notified_supplier_rop = True
-            db.session.commit()
-            flash(f"Supplier email sent for {p.name}.", "info")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Stock issued, but supplier email failed: {e}", "warning")
+    # Reorder email is handled by the polling script (check_stock_poll.py)
+    # which runs via Windows Task Scheduler every 1 minute.
     flash("Stock issued and updated.", "success")
     return redirect(url_for("main.product_edit", pid=pid))
 # low stock route
