@@ -49,9 +49,15 @@ log = logging.getLogger(__name__)
 # Insert project root so that app.py / models.py / email_service.py resolve correctly.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app import create_app, db
-from models import Product, PurchaseOrder
-from email_service import send_email
+log.info("── Poll started ──")
+
+try:
+    from app import create_app, db
+    from models import Product, PurchaseOrder
+    from email_service import send_email
+except Exception as _import_exc:
+    log.critical("Import failed – check Python path and dependencies: %s", _import_exc, exc_info=True)
+    sys.exit(1)
 
 
 def check_low_stock():
@@ -123,7 +129,6 @@ def check_low_stock():
 
 
 if __name__ == "__main__":
-    log.info("── Poll started ──")
     try:
         check_low_stock()
     except Exception as exc:
