@@ -93,6 +93,11 @@ def check_low_stock():
 
             # Already notified for this low-stock period → skip
             if p.notified_supplier_rop:
+                if stock < trigger:
+                    log.info(
+                        "SKIP (already notified)  %s  stock=%.2f  trigger=%.2f",
+                        p.name, stock, trigger,
+                    )
                 continue
 
             # Stock is at or above trigger → nothing to do
