@@ -57,7 +57,7 @@ _ch = logging.StreamHandler(sys.stdout)
 _ch.setFormatter(_fmt)
 log.addHandler(_ch)
 
-log.info("── Poll run started ──")
+log.info("--- Poll run started ---")
 
 # ---------------------------------------------------------------------------
 # Bootstrap  –  add project root to sys.path, then import Flask app & models.
@@ -103,7 +103,7 @@ def check_low_stock():
             if not p.supplier or not p.supplier.email:
                 log.warning(
                     "LOW STOCK  %s (id=%d)  stock=%.2f  trigger=%.2f  "
-                    "– no supplier email configured, skipping.",
+                    "- no supplier email configured, skipping.",
                     p.name, p.id, stock, trigger,
                 )
                 continue
@@ -159,7 +159,7 @@ def check_low_stock():
                 )
 
         log.info(
-            "── Poll complete  –  %d product(s) below trigger, %d email(s) sent ──",
+            "--- Poll complete - %d product(s) below trigger, %d email(s) sent ---",
             reorder_needed, emails_sent,
         )
 
