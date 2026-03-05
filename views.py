@@ -5,6 +5,7 @@ from sqlalchemy import func
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app import db
 from models import Product, StockMovement, Supplier
+from models import Product, StockMovement, Supplier, PurchaseOrder
 from email_service import send_email
 # routes blueprint
 bp = Blueprint("main", __name__)
@@ -147,18 +148,19 @@ def low_stock_dashboard():
     products = Product.query.order_by(Product.name.asc()).all()
     rows = []
     for p in products:
-        rop = p.compute_rop()
         current = float(p.current_stock or 0.0)
-        threshold = rop + (rop * 0.125)
+        trigger = p.reorder_trigger_level()
+        threshold = trigger + (trigger * 0.125)
         if current <= threshold:
             rows.append({
                 "product": p,
                 "current": current,
-                "rop": rop,
+                "rop": trigger,
                 "threshold": threshold,
-                "below_rop": current < rop,
+                "below_rop": current < trigger,
+                "is_kanban": p.is_kanban(),
                 "max_stock": float(p.max_stock or 0.0),
-                "suggested_order": p.suggested_order_qty(),
+                "suggested_order": p.suggested_order_qty_display(),
             })
     return render_template("low_stock_dashboard.html", rows=rows)
 # idle stock route
