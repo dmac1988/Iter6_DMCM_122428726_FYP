@@ -138,7 +138,7 @@ def product_issue_stock(pid):
     db.session.add(m)
     db.session.commit()
     # Reorder email is handled by the polling script (check_stock_poll.py)
-    # which runs via Windows Task Scheduler every 1 minute.
+    # which runs via Windows Task Scheduler every 5 minutes.
     flash("Stock issued and updated.", "success")
     return redirect(url_for("main.product_edit", pid=pid))
 # low stock route

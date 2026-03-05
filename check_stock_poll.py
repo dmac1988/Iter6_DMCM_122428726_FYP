@@ -1,13 +1,13 @@
 """
 check_stock_poll.py  –  Automatic low-stock detection & reorder emails
 ----------------------------------------------------------------------
-Runs as a standalone script via Windows Task Scheduler (every 1 minute).
+Runs as a standalone script via Windows Task Scheduler (every 5 minutes).
 Mirrors the supplier reorder email logic in product_issue_stock() (views.py).
 
 WINDOWS TASK SCHEDULER SETUP
 1. Open Task Scheduler  →  Create Basic Task  →  name it "Stock Poll"
 2. Trigger:  Daily  →  in Advanced settings set
-   "Repeat task every: 1 minute"  /  "for a duration of: Indefinitely"
+   "Repeat task every: 5 minutes"  /  "for a duration of: Indefinitely"
 3. Action:  Start a Program
      Program/script :  C:\\path\\to\\python.exe
      Add arguments  :  check_stock_poll.py
