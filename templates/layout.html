@@ -14,13 +14,12 @@
   <div class="container">
     <a class="navbar-brand" href="{{ url_for('main.products') }}">Products</a>
 
-    <div class="ms-auto">
-      <a class="btn btn-sm btn-outline-warning"
+    <div class="ms-auto d-flex gap-2">
+      <a class="btn btn-sm btn-primary"
          href="{{ url_for('main.low_stock_dashboard') }}">
         Low Stock Dashboard
       </a>
-        <div class="ms-auto">
-      <a class="btn btn-sm btn-outline-warning"
+      <a class="btn btn-sm btn-primary"
          href="{{ url_for('main.idle_stock_dashboard') }}">
         Idle Stock Dashboard
       </a>
