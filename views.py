@@ -109,6 +109,9 @@ def product_add_stock(pid):
     trigger_level = p.reorder_trigger_level()
     if p.current_stock >= trigger_level and p.notified_supplier_rop:
         p.notified_supplier_rop = False
+    # Reset idle flag so a new idle period will trigger a fresh email
+    if p.notified_idle:
+        p.notified_idle = False
     m = StockMovement(product_id=pid, movement_type="Delivery", qty_change=qty)
     db.session.add(m)
     db.session.commit()
@@ -135,6 +138,9 @@ def product_issue_stock(pid):
             f"Warning: stock for {p.name} is below {label}. Current stock: {p.current_stock}.",
             "warning",
         )
+    # Reset idle flag so a new idle period will trigger a fresh email
+    if p.notified_idle:
+        p.notified_idle = False
     m = StockMovement(product_id=pid, movement_type="ISSUE", qty_change=-qty, location=location)
     db.session.add(m)
     db.session.commit()
